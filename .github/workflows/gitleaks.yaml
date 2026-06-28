@@ -1,34 +1,51 @@
-name: Gitleaks Scan
+name: GitLeaks
 
 on:
-  pull_request:
   push:
     branches:
-      - dev
       - main
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
   gitleaks:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_REPORT_FORMAT: sarif
-          GITLEAKS_REPORT_PATH: gitleaks-report.sarif
+      - name: Install GitLeaks
+        run: |
+          set -euo pipefail
+          wget -q "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz"
+          tar -xzf gitleaks_8.30.1_linux_x64.tar.gz
+          sudo mv gitleaks /usr/local/bin/
 
-      - name: Upload Gitleaks Report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Run GitLeaks
+        id: gitleaks
+        run: |
+          set -euo pipefail
+          gitleaks git \
+            --report-format sarif \
+            --report-path results.sarif \
+            --verbose \
+            .
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always() && hashFiles('results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+
+      - name: Upload GitLeaks report artifact
+        if: always() && hashFiles('results.sarif') != ''
+        uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
-          path: gitleaks-report.sarif
+          path: results.sarif
           retention-days: 30
