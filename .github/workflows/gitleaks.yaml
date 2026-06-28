@@ -33,3 +33,4 @@ jobs:
             --report-format sarif \
             --report-path results.sarif \
             --verbose \
+            --redact \
