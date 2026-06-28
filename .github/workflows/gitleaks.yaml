@@ -43,3 +43,11 @@ jobs:
         with:
           sarif_file: results.sarif
 
+      - name: Upload GitLeaks report artifact
+        if: always() && hashFiles('results.sarif') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-report
+          path: results.sarif
+          retention-days: 30
+
